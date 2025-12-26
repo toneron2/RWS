@@ -1,0 +1,56 @@
+{
+  "$schema": "../schemas/request.schema.json",
+  "project": {
+    "name": "Memorial Regional Hospital - Surgery Suite Expansion",
+    "location": {
+      "city": "Houston",
+      "state": "TX",
+      "climate_zone": "2A",
+      "altitude_ft": 50
+    },
+    "installation": "indoor"
+  },
+  "airflow": {
+    "supply_cfm": 12000,
+    "outdoor_air_cfm": 12000,
+    "outdoor_air_percent": 100
+  },
+  "conditions": {
+    "outdoor_summer": {
+      "db_temp_f": 96,
+      "wb_temp_f": 78
+    },
+    "outdoor_winter": {
+      "db_temp_f": 28,
+      "rh_percent": 50
+    },
+    "return_air": {
+      "db_temp_f": 70,
+      "rh_percent": 50
+    },
+    "supply_air": {
+      "db_temp_f": 55,
+      "rh_percent": 95
+    }
+  },
+  "envelope": {
+    "max_length_in": 360,
+    "max_width_in": 96,
+    "max_height_in": 96,
+    "access_side": "both"
+  },
+  "performance": {
+    "max_external_sp_in_wg": 3.0,
+    "max_sound_nc": 35,
+    "efficiency_target": "premium"
+  },
+  "options": {
+    "heating_type": "hot_water",
+    "cooling_type": "chilled_water",
+    "humidification": true,
+    "energy_recovery": false,
+    "vfd": true,
+    "filter_rating": "HEPA"
+  },
+  "codes": ["ASHRAE90.1", "ASHRAE62.1", "ASHRAE170"]
+}

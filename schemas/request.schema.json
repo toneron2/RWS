@@ -1,0 +1,156 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rws.local/schemas/request.schema.json",
+  "title": "AHU Design Request",
+  "description": "Customer requirements for air handler design",
+  "type": "object",
+  "required": ["project", "airflow", "conditions"],
+  "properties": {
+    "project": {
+      "type": "object",
+      "required": ["name", "location"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Project or customer name"
+        },
+        "location": {
+          "type": "object",
+          "required": ["city", "state"],
+          "properties": {
+            "city": { "type": "string" },
+            "state": { "type": "string" },
+            "climate_zone": { "type": "string" },
+            "altitude_ft": { "type": "number", "default": 0 }
+          }
+        },
+        "installation": {
+          "type": "string",
+          "enum": ["indoor", "outdoor", "rooftop", "penthouse"],
+          "default": "indoor"
+        }
+      }
+    },
+    "airflow": {
+      "type": "object",
+      "required": ["supply_cfm"],
+      "properties": {
+        "supply_cfm": {
+          "type": "number",
+          "minimum": 500,
+          "maximum": 100000,
+          "description": "Supply airflow in CFM"
+        },
+        "outdoor_air_cfm": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Minimum outdoor air CFM"
+        },
+        "outdoor_air_percent": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Outdoor air percentage"
+        },
+        "return_cfm": {
+          "type": "number",
+          "description": "Return air CFM (if different from supply)"
+        }
+      }
+    },
+    "conditions": {
+      "type": "object",
+      "required": ["supply_air"],
+      "properties": {
+        "outdoor_summer": {
+          "type": "object",
+          "properties": {
+            "db_temp_f": { "type": "number" },
+            "wb_temp_f": { "type": "number" },
+            "rh_percent": { "type": "number" }
+          }
+        },
+        "outdoor_winter": {
+          "type": "object",
+          "properties": {
+            "db_temp_f": { "type": "number" },
+            "rh_percent": { "type": "number" }
+          }
+        },
+        "return_air": {
+          "type": "object",
+          "properties": {
+            "db_temp_f": { "type": "number", "default": 75 },
+            "rh_percent": { "type": "number", "default": 50 }
+          }
+        },
+        "supply_air": {
+          "type": "object",
+          "required": ["db_temp_f"],
+          "properties": {
+            "db_temp_f": { "type": "number" },
+            "rh_percent": { "type": "number" }
+          }
+        }
+      }
+    },
+    "envelope": {
+      "type": "object",
+      "description": "Physical space constraints",
+      "properties": {
+        "max_length_in": { "type": "number" },
+        "max_width_in": { "type": "number" },
+        "max_height_in": { "type": "number" },
+        "weight_limit_lbs": { "type": "number" },
+        "access_side": {
+          "type": "string",
+          "enum": ["left", "right", "both"]
+        }
+      }
+    },
+    "performance": {
+      "type": "object",
+      "properties": {
+        "max_external_sp_in_wg": {
+          "type": "number",
+          "description": "Maximum external static pressure (in. w.g.)"
+        },
+        "max_sound_nc": {
+          "type": "number",
+          "description": "Maximum NC rating"
+        },
+        "efficiency_target": {
+          "type": "string",
+          "enum": ["standard", "high", "premium"]
+        }
+      }
+    },
+    "options": {
+      "type": "object",
+      "properties": {
+        "heating_type": {
+          "type": "string",
+          "enum": ["none", "hot_water", "steam", "electric", "gas"]
+        },
+        "cooling_type": {
+          "type": "string",
+          "enum": ["none", "chilled_water", "dx"]
+        },
+        "humidification": { "type": "boolean", "default": false },
+        "energy_recovery": { "type": "boolean", "default": false },
+        "vfd": { "type": "boolean", "default": true },
+        "filter_rating": {
+          "type": "string",
+          "enum": ["MERV8", "MERV10", "MERV13", "MERV14", "HEPA"]
+        }
+      }
+    },
+    "codes": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["ASHRAE90.1", "ASHRAE62.1", "IECC", "Title24", "LEED", "WELL"]
+      }
+    }
+  }
+}

@@ -1,0 +1,146 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rws.local/schemas/constraint.schema.json",
+  "title": "AHU Design Constraints",
+  "description": "Engineering constraints and design parameters",
+  "type": "object",
+  "properties": {
+    "thermal": {
+      "type": "object",
+      "properties": {
+        "cooling_load_btuh": {
+          "type": "number",
+          "description": "Total cooling load (BTU/hr)"
+        },
+        "sensible_load_btuh": {
+          "type": "number",
+          "description": "Sensible cooling load (BTU/hr)"
+        },
+        "latent_load_btuh": {
+          "type": "number",
+          "description": "Latent cooling load (BTU/hr)"
+        },
+        "heating_load_btuh": {
+          "type": "number",
+          "description": "Heating load (BTU/hr)"
+        },
+        "chw_temp_in_f": {
+          "type": "number",
+          "default": 44,
+          "description": "Chilled water entering temp"
+        },
+        "chw_temp_out_f": {
+          "type": "number",
+          "default": 54,
+          "description": "Chilled water leaving temp"
+        },
+        "hw_temp_in_f": {
+          "type": "number",
+          "default": 180,
+          "description": "Hot water entering temp"
+        },
+        "hw_temp_out_f": {
+          "type": "number",
+          "default": 160,
+          "description": "Hot water leaving temp"
+        }
+      }
+    },
+    "airside": {
+      "type": "object",
+      "properties": {
+        "face_velocity_fpm": {
+          "type": "object",
+          "properties": {
+            "min": { "type": "number", "default": 400 },
+            "max": { "type": "number", "default": 550 },
+            "target": { "type": "number", "default": 500 }
+          }
+        },
+        "coil_pressure_drop_in_wg": {
+          "type": "object",
+          "properties": {
+            "max": { "type": "number", "default": 0.75 }
+          }
+        },
+        "filter_pressure_drop_in_wg": {
+          "type": "object",
+          "properties": {
+            "clean": { "type": "number" },
+            "dirty": { "type": "number" }
+          }
+        },
+        "total_internal_sp_in_wg": {
+          "type": "number",
+          "description": "Total internal static pressure drop"
+        }
+      }
+    },
+    "waterside": {
+      "type": "object",
+      "properties": {
+        "max_water_velocity_fps": {
+          "type": "number",
+          "default": 8,
+          "description": "Maximum tube velocity (ft/s)"
+        },
+        "max_water_pd_ft": {
+          "type": "number",
+          "default": 25,
+          "description": "Maximum water pressure drop (ft H2O)"
+        }
+      }
+    },
+    "electrical": {
+      "type": "object",
+      "properties": {
+        "voltage": {
+          "type": "number",
+          "enum": [208, 230, 460, 575]
+        },
+        "phase": {
+          "type": "number",
+          "enum": [1, 3]
+        },
+        "frequency": {
+          "type": "number",
+          "enum": [50, 60],
+          "default": 60
+        }
+      }
+    },
+    "acoustic": {
+      "type": "object",
+      "properties": {
+        "discharge_nc": { "type": "number" },
+        "radiated_nc": { "type": "number" },
+        "require_sound_attenuator": { "type": "boolean" }
+      }
+    },
+    "component_preferences": {
+      "type": "object",
+      "properties": {
+        "fan_type": {
+          "type": "string",
+          "enum": ["plenum", "centrifugal", "axial", "mixed_flow"]
+        },
+        "fan_arrangement": {
+          "type": "string",
+          "enum": ["single", "array", "redundant"]
+        },
+        "coil_material": {
+          "type": "string",
+          "enum": ["copper_aluminum", "copper_copper", "stainless"]
+        },
+        "casing_material": {
+          "type": "string",
+          "enum": ["galvanized", "stainless", "aluminum"]
+        },
+        "insulation_thickness_in": {
+          "type": "number",
+          "enum": [1, 2, 3]
+        }
+      }
+    }
+  }
+}

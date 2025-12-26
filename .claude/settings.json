@@ -1,0 +1,24 @@
+{
+  "mcpServers": {
+    "psychrometrics": {
+      "command": "npx",
+      "args": ["tsx", "mcp-servers/psychrometrics/index.ts"],
+      "description": "Psychrometric calculations for air property analysis"
+    },
+    "component-db": {
+      "command": "npx",
+      "args": ["tsx", "mcp-servers/component-db/index.ts"],
+      "description": "HVAC component catalog and selection"
+    },
+    "simulation": {
+      "command": "npx",
+      "args": ["tsx", "mcp-servers/simulation/index.ts"],
+      "description": "AHU sizing and performance simulation"
+    },
+    "estimation": {
+      "command": "npx",
+      "args": ["tsx", "mcp-servers/estimation/index.ts"],
+      "description": "Cost estimation and BOM generation"
+    }
+  }
+}

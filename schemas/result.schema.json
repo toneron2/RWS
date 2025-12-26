@@ -1,0 +1,345 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rws.local/schemas/result.schema.json",
+  "title": "AHU Design Result",
+  "description": "Complete air handler design output",
+  "type": "object",
+  "required": ["design_id", "summary", "components", "performance"],
+  "properties": {
+    "design_id": {
+      "type": "string",
+      "description": "Unique design identifier"
+    },
+    "version": {
+      "type": "integer",
+      "description": "Design iteration number"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "summary": {
+      "type": "object",
+      "required": ["model", "capacity", "dimensions"],
+      "properties": {
+        "model": {
+          "type": "string",
+          "description": "Unit model designation"
+        },
+        "configuration": {
+          "type": "string",
+          "enum": ["horizontal", "vertical", "stacked"]
+        },
+        "arrangement": {
+          "type": "string",
+          "enum": ["blow_through", "draw_through"]
+        },
+        "capacity": {
+          "type": "object",
+          "properties": {
+            "supply_cfm": { "type": "number" },
+            "cooling_mbh": { "type": "number" },
+            "heating_mbh": { "type": "number" }
+          }
+        },
+        "dimensions": {
+          "type": "object",
+          "properties": {
+            "length_in": { "type": "number" },
+            "width_in": { "type": "number" },
+            "height_in": { "type": "number" },
+            "weight_lbs": { "type": "number" }
+          }
+        }
+      }
+    },
+    "sections": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "position": { "type": "integer" },
+          "type": {
+            "type": "string",
+            "enum": [
+              "outdoor_air",
+              "return_air",
+              "mixing",
+              "filter",
+              "preheat_coil",
+              "cooling_coil",
+              "heating_coil",
+              "fan",
+              "supply",
+              "humidifier",
+              "energy_recovery",
+              "sound_attenuator",
+              "access",
+              "drain_pan"
+            ]
+          },
+          "length_in": { "type": "number" },
+          "components": { "type": "array" }
+        }
+      }
+    },
+    "components": {
+      "type": "object",
+      "properties": {
+        "fans": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/fan"
+          }
+        },
+        "coils": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/coil"
+          }
+        },
+        "filters": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/filter"
+          }
+        },
+        "dampers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/damper"
+          }
+        },
+        "accessories": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "type": { "type": "string" },
+              "description": { "type": "string" },
+              "part_number": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "performance": {
+      "type": "object",
+      "properties": {
+        "airside": {
+          "type": "object",
+          "properties": {
+            "supply_cfm": { "type": "number" },
+            "face_velocity_fpm": { "type": "number" },
+            "total_sp_in_wg": { "type": "number" },
+            "external_sp_in_wg": { "type": "number" },
+            "internal_sp_in_wg": { "type": "number" },
+            "fan_bhp": { "type": "number" },
+            "motor_hp": { "type": "number" }
+          }
+        },
+        "thermal": {
+          "type": "object",
+          "properties": {
+            "cooling_total_mbh": { "type": "number" },
+            "cooling_sensible_mbh": { "type": "number" },
+            "cooling_latent_mbh": { "type": "number" },
+            "heating_mbh": { "type": "number" },
+            "entering_air_db_f": { "type": "number" },
+            "entering_air_wb_f": { "type": "number" },
+            "leaving_air_db_f": { "type": "number" },
+            "leaving_air_wb_f": { "type": "number" }
+          }
+        },
+        "waterside": {
+          "type": "object",
+          "properties": {
+            "chw_gpm": { "type": "number" },
+            "chw_pd_ft": { "type": "number" },
+            "hw_gpm": { "type": "number" },
+            "hw_pd_ft": { "type": "number" }
+          }
+        },
+        "electrical": {
+          "type": "object",
+          "properties": {
+            "total_kw": { "type": "number" },
+            "mca": { "type": "number" },
+            "mop": { "type": "number" }
+          }
+        },
+        "acoustic": {
+          "type": "object",
+          "properties": {
+            "discharge_sound": {
+              "type": "object",
+              "properties": {
+                "nc": { "type": "number" },
+                "octave_bands": {
+                  "type": "array",
+                  "items": { "type": "number" }
+                }
+              }
+            },
+            "radiated_sound": {
+              "type": "object",
+              "properties": {
+                "nc": { "type": "number" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "psychrometrics": {
+      "type": "object",
+      "properties": {
+        "outdoor_air": {
+          "$ref": "#/$defs/air_state"
+        },
+        "return_air": {
+          "$ref": "#/$defs/air_state"
+        },
+        "mixed_air": {
+          "$ref": "#/$defs/air_state"
+        },
+        "off_coil": {
+          "$ref": "#/$defs/air_state"
+        },
+        "supply_air": {
+          "$ref": "#/$defs/air_state"
+        }
+      }
+    },
+    "costing": {
+      "type": "object",
+      "properties": {
+        "base_price": { "type": "number" },
+        "options_price": { "type": "number" },
+        "total_list_price": { "type": "number" },
+        "margin_percent": { "type": "number" },
+        "sell_price": { "type": "number" },
+        "bom": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "item": { "type": "string" },
+              "quantity": { "type": "number" },
+              "unit_cost": { "type": "number" },
+              "extended_cost": { "type": "number" }
+            }
+          }
+        }
+      }
+    },
+    "compliance": {
+      "type": "object",
+      "properties": {
+        "codes_checked": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "pass": { "type": "boolean" },
+        "notes": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "qa": {
+      "type": "object",
+      "properties": {
+        "validation_status": {
+          "type": "string",
+          "enum": ["pending", "passed", "failed", "warning"]
+        },
+        "checks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" },
+              "status": { "type": "string" },
+              "message": { "type": "string" }
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "air_state": {
+      "type": "object",
+      "properties": {
+        "db_temp_f": { "type": "number" },
+        "wb_temp_f": { "type": "number" },
+        "rh_percent": { "type": "number" },
+        "humidity_ratio": { "type": "number" },
+        "enthalpy_btu_lb": { "type": "number" },
+        "specific_volume_ft3_lb": { "type": "number" },
+        "dew_point_f": { "type": "number" }
+      }
+    },
+    "fan": {
+      "type": "object",
+      "properties": {
+        "tag": { "type": "string" },
+        "type": { "type": "string" },
+        "manufacturer": { "type": "string" },
+        "model": { "type": "string" },
+        "cfm": { "type": "number" },
+        "tsp_in_wg": { "type": "number" },
+        "rpm": { "type": "number" },
+        "bhp": { "type": "number" },
+        "motor_hp": { "type": "number" },
+        "efficiency_percent": { "type": "number" }
+      }
+    },
+    "coil": {
+      "type": "object",
+      "properties": {
+        "tag": { "type": "string" },
+        "type": {
+          "type": "string",
+          "enum": ["cooling", "heating", "preheat"]
+        },
+        "medium": {
+          "type": "string",
+          "enum": ["chilled_water", "hot_water", "steam", "dx", "electric"]
+        },
+        "rows": { "type": "integer" },
+        "fins_per_inch": { "type": "number" },
+        "face_area_sqft": { "type": "number" },
+        "capacity_mbh": { "type": "number" },
+        "gpm": { "type": "number" },
+        "water_pd_ft": { "type": "number" },
+        "air_pd_in_wg": { "type": "number" }
+      }
+    },
+    "filter": {
+      "type": "object",
+      "properties": {
+        "tag": { "type": "string" },
+        "type": { "type": "string" },
+        "rating": { "type": "string" },
+        "quantity": { "type": "integer" },
+        "size": { "type": "string" },
+        "pd_clean_in_wg": { "type": "number" },
+        "pd_dirty_in_wg": { "type": "number" }
+      }
+    },
+    "damper": {
+      "type": "object",
+      "properties": {
+        "tag": { "type": "string" },
+        "type": {
+          "type": "string",
+          "enum": ["outdoor_air", "return_air", "exhaust", "isolation"]
+        },
+        "size_in": { "type": "string" },
+        "actuator": { "type": "string" }
+      }
+    }
+  }
+}
