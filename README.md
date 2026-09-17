@@ -16,6 +16,12 @@ This isn't a toy. It's a functional architecture for designing custom air handli
 
 **Built on Anthropic's Claude with Model Context Protocol (MCP) - December 2025**
 
+**Status: Specification, four MCP servers and a scripted demonstration, December 2025.**
+[examples/demo-workflow.md](examples/demo-workflow.md) is the script; no run is recorded here.
+
+A standalone project on this account: the pattern from the governance architecture, tested
+against a regulated engineering discipline.
+
 ---
 
 ## Why Agentic AI Matters for HVAC
