@@ -1,322 +1,77 @@
 # RWS: Rapid HVAC Workflow System
 
-**Agentic AI for Air Handler Design & Estimation**
+**Custom air-handling-unit design and estimation as seven cooperating agents over four
+calculation servers.** The engineering method is written in plain language; the arithmetic
+is done by code. Built on Claude Code and the Model Context Protocol, December 2025.
 
----
+| | |
+|---|---|
+| **Status** | Specification, four MCP servers and a scripted demonstration, December 2025. |
+| **Agents** | 7 Claude Code skills: conductor, psychrometrics, airflow, thermal, design, cost, QA |
+| **Servers** | 4 MCP servers, TypeScript, 1,481 lines: `psychrometrics`, `component-db`, `simulation`, `estimation` |
+| **Contracts** | 3 JSON schemas: request, constraint, result |
+| **Demonstration** | [`examples/demo-workflow.md`](examples/demo-workflow.md): a hospital surgery suite (100 % outdoor air, HEPA, NC 35, Houston climate). The script is here; no run is recorded |
+| **Licence** | MIT |
 
-## What Is This?
+A standalone project on this account: the agent-and-tool pattern from the governance
+architecture, applied to a regulated engineering discipline.
 
-RWS demonstrates how **agentic AI** can transform HVAC equipment design. Instead of simple chatbots or black-box predictions, agentic AI uses specialized "agents" that collaborate like a team of engineers—each with distinct expertise, working together to solve complex problems.
+## The problem
 
-This isn't a toy. It's a functional architecture for designing custom air handling units, complete with:
-- Psychrometric analysis
-- Coil and fan selection
-- Cost estimation
-- Quality assurance
+A custom air handler needs psychrometrics, coil and fan selection, acoustics, code
+compliance and cost estimation, and that knowledge sits with senior engineers. Encoding it
+as documents an agent applies, with the calculations done by deterministic servers, makes
+it reviewable, repeatable and transferable.
 
-**Built on Anthropic's Claude with Model Context Protocol (MCP) - December 2025**
-
-**Status: Specification, four MCP servers and a scripted demonstration, December 2025.**
-[examples/demo-workflow.md](examples/demo-workflow.md) is the script; no run is recorded here.
-
-A standalone project on this account: the pattern from the governance architecture, tested
-against a regulated engineering discipline.
-
----
-
-## Why Agentic AI Matters for HVAC
-
-### The Problem
-
-Designing a custom air handler requires expertise across multiple domains:
-- Thermodynamics and psychrometrics
-- Component selection (coils, fans, filters)
-- Acoustic analysis
-- Code compliance
-- Cost estimation
-
-This knowledge typically lives in the heads of senior engineers. It's hard to transfer, inconsistent across individuals, and doesn't scale.
-
-### The Agentic Solution
-
-Instead of trying to replace engineers, agentic AI **encodes their expertise** into specialized agents:
+## How it works
 
 ```
-Customer Request
-       │
-       ▼
-┌──────────────────────────────────────────────────────────────┐
-│                     CONDUCTOR AGENT                          │
-│            Orchestrates the design pipeline                  │
-└──────────────────────────┬───────────────────────────────────┘
-                           │
-       ┌───────────────────┼───────────────────┐
-       ▼                   ▼                   ▼
-┌─────────────┐    ┌─────────────┐    ┌─────────────┐
-│   DESIGN    │    │   PSYCHRO   │    │   THERMAL   │
-│   AGENT     │    │   AGENT     │    │   AGENT     │
-│             │    │             │    │             │
-│ Layout &    │    │ Air states  │    │ Coil        │
-│ sizing      │    │ & loads     │    │ selection   │
-└─────────────┘    └─────────────┘    └─────────────┘
-       │                   │                   │
-       └───────────────────┼───────────────────┘
-                           ▼
-       ┌───────────────────┼───────────────────┐
-       ▼                   ▼                   ▼
-┌─────────────┐    ┌─────────────┐    ┌─────────────┐
-│   AIRFLOW   │    │    COST     │    │     QA      │
-│   AGENT     │    │    AGENT    │    │    AGENT    │
-│             │    │             │    │             │
-│ Fan curves  │    │ BOM &       │    │ Validation  │
-│ & acoustics │    │ pricing     │    │ & codes     │
-└─────────────┘    └─────────────┘    └─────────────┘
-                           │
-                           ▼
-                  Complete Design
+ request (CFM, supply temperature, climate, filtration, coil type)
+     │
+     ▼
+ ahu-conductor ── validates the request, derives constraints, sequences the agents
+     ├── ahu-design    conceptual design: unit arrangement and casing
+     ├── ahu-psychro   mixed-air and coil-leaving states            → psychrometrics
+     ├── ahu-thermal   coil selection, rows, water-side hydraulics  → component-db, simulation
+     ├── ahu-airflow   face velocity, static pressure, fan selection → component-db, simulation
+     ├── ahu-cost      bill of materials and price roll-up           → estimation
+     └── ahu-qa        checks the result against the schema and the constraints
+     │
+     ▼
+ result: a complete design with BOM and pricing, and the reasoning at each step
 ```
 
-Each agent:
-- Has **specific expertise** encoded in plain language
-- Uses **real calculations** via MCP servers
-- **Explains its reasoning** at every step
-- Can be **updated independently** as practices change
+| Server | Tools | Purpose |
+|---|---|---|
+| `psychrometrics` | `calculate`, `mix`, `process` | air properties, mixing, cooling and heating processes |
+| `component-db` | `lookup`, `list`, `coils`, `fans` | fan curves and coil performance data; designed to connect to a real catalogue |
+| `simulation` | `size`, `airflow`, `thermal` | sizing, airflow and thermal calculations, pressure drop |
+| `estimation` | `price`, `component_price` | cost roll-up and bill of materials |
 
----
+Every design passes schema validation before it is returned: supply airflow within range,
+every required component present, a complete BOM. A skill is a text file; changing the
+selection method is an edit, not a retraining.
 
-## Business Value
+## Running the demonstration
 
-### For Engineering Teams
-
-| Before | After |
-|--------|-------|
-| Senior engineer required for every design | Junior staff produces senior-quality work |
-| 2-5 days per custom quote | Complete design in minutes |
-| Knowledge lives in people's heads | Expertise encoded and preserved |
-| Inconsistent approaches across team | Every design follows best practices |
-
-### For Operations
-
-| Before | After |
-|--------|-------|
-| Bottleneck on experienced engineers | Parallel processing at scale |
-| Training takes 6-12 months | New hires productive in weeks |
-| Quality varies with workload | Consistent output regardless of volume |
-| Tribal knowledge lost when people leave | Institutional memory preserved |
-
-### For the Business
-
-| Before | After |
-|--------|-------|
-| Quote volume limited by headcount | Respond to every opportunity |
-| Engineering costs grow linearly | Capability grows exponentially |
-| Competitive advantage is people-dependent | Advantage is systematized |
-| Innovation requires retraining everyone | Update once, deploy everywhere |
-
----
-
-## How It Works
-
-### 1. Skills (Engineering Expertise)
-
-Skills are plain-language documents that encode domain knowledge:
-
-```markdown
-# ahu-thermal: Coil Selection Agent
-
-You are an expert in heat exchanger design...
-
-## Selection Methodology
-1. Establish requirements from psychrometric analysis
-2. Calculate face area from CFM and velocity
-3. Determine rows needed for delta-T
-4. Select from component catalog
-5. Verify water-side hydraulics
-...
-```
-
-No machine learning required. No training data. Just written expertise that Claude can apply.
-
-### 2. MCP Servers (Computational Engines)
-
-Model Context Protocol servers provide real calculations:
-
-- **Psychrometrics**: Air property calculations
-- **Component Database**: Fan curves, coil performance data
-- **Simulation**: Sizing algorithms, pressure drop analysis
-- **Estimation**: Cost rollup, BOM generation
-
-These connect to your actual data sources—your catalog, your pricing.
-
-### 3. Schemas (Quality Assurance)
-
-JSON schemas ensure every design is complete and valid:
-
-```json
-{
-  "supply_cfm": 10000,      // Validated: 500-100,000 range
-  "supply_temp_f": 55,      // Validated: reasonable HVAC range
-  "components": { ... },    // Validated: all required fields
-  "pricing": { ... }        // Validated: complete BOM
-}
-```
-
-No hallucinated specifications. No missing fields.
-
----
-
-## Quick Demo
-
-### Prerequisites
-
-1. **Claude Code CLI** - [Install guide](https://docs.anthropic.com/claude-code)
-2. **Claude Pro or Max subscription** - $20-100/month, no API key needed
-3. **Node.js 18+** - For MCP servers
-
-### Run Your First Design
+Requires Claude Code and Node.js 18+.
 
 ```bash
-# Clone the repository
-git clone https://github.com/toneron2/RWS.git
-cd RWS
-
-# Install dependencies
+git clone https://github.com/toneron2/RWS.git && cd RWS
 npm install
-
-# Run Claude Code
 claude
-
-# Ask for a design
-> Design an AHU: 10,000 CFM, 55°F supply, Houston TX,
-  chilled water cooling, MERV 13 filters
+> Design an AHU: 10,000 CFM, 55°F supply, Houston TX, chilled water cooling, MERV 13 filters
 ```
 
-Watch the agents collaborate to produce a complete design with BOM and pricing.
+[`QUICKSTART.md`](QUICKSTART.md) has the step-by-step setup;
+[`docs/BUSINESS_CASE.md`](docs/BUSINESS_CASE.md) the cost case for an engineering team.
 
----
+## Extending it
 
-## Project Structure
+Add an equipment type by writing a skill for its selection method, adding its data to
+`component-db`, and extending the schemas. The `component-db` server is the intended seam
+to an ERP, a vendor database or a pricing sheet.
 
-```
-RWS/
-├── .claude/
-│   └── skills/           # Agent expertise definitions
-│       ├── ahu-conductor/    # Pipeline orchestration
-│       ├── ahu-design/       # Configuration & sizing
-│       ├── ahu-psychro/      # Psychrometric analysis
-│       ├── ahu-thermal/      # Coil selection
-│       ├── ahu-airflow/      # Fan selection
-│       ├── ahu-cost/         # Pricing & BOM
-│       └── ahu-qa/           # Validation
-│
-├── mcp-servers/          # Computational engines
-│   ├── psychrometrics/       # Air properties
-│   ├── component-db/         # Equipment catalog
-│   ├── simulation/           # Performance calcs
-│   └── estimation/           # Cost engine
-│
-├── schemas/              # Data validation
-│   ├── request.schema.json
-│   ├── constraint.schema.json
-│   └── result.schema.json
-│
-├── examples/             # Demo scenarios
-│   ├── hospital-surgery-suite.json
-│   └── demo-workflow.md
-│
-└── docs/                 # Additional documentation
-    └── BUSINESS_CASE.md
-```
+## Contact
 
----
-
-## What Makes This Different
-
-### vs. ChatGPT/Generic AI
-
-| Generic AI | RWS Agentic System |
-|------------|-------------------|
-| "Here's a rough estimate..." | Complete BOM with validated pricing |
-| Single response | Multi-agent collaboration |
-| May hallucinate specs | Schema-validated outputs |
-| No real calculations | MCP servers do actual math |
-| Conversation ends | Pipeline continues until complete |
-
-### vs. Traditional Software
-
-| Traditional Software | RWS Agentic System |
-|---------------------|-------------------|
-| Rigid input forms | Natural language requests |
-| Fixed logic paths | Adaptive reasoning |
-| Change requires developers | Update skill documents |
-| Binary pass/fail | Explains tradeoffs |
-| One-size-fits-all | Context-aware decisions |
-
-### vs. Custom ML Models
-
-| Custom ML | RWS Agentic System |
-|-----------|-------------------|
-| Requires training data | Works from first principles |
-| 12-24 month development | Operational in weeks |
-| Black box predictions | Explainable reasoning |
-| Expensive to modify | Edit text files |
-| Accuracy depends on data | Accuracy depends on engineering |
-
----
-
-## Extending the System
-
-### Add a New Component Type
-
-1. Create a skill document describing selection methodology
-2. Add component data to the MCP server
-3. Update schemas for new fields
-4. Test with example requests
-
-### Connect Your Catalog
-
-The `component-db` MCP server is designed to connect to real data sources:
-- ERP systems
-- Vendor databases
-- Pricing sheets
-- Performance curves
-
-### Add New Applications
-
-The architecture handles any equipment type:
-- Rooftop units
-- Chillers
-- Boilers
-- Custom air handling configurations
-
----
-
-## Technology Foundation
-
-Built on Anthropic's latest capabilities (December 2025):
-
-- **Claude Code**: CLI-native AI development environment
-- **Model Context Protocol (MCP)**: Standardized tool integration
-- **Skills**: Domain expertise as natural language specifications
-- **Multi-agent orchestration**: Specialized agents working in concert
-
----
-
-## Getting Started
-
-See [QUICKSTART.md](QUICKSTART.md) for step-by-step setup instructions.
-
-See [examples/demo-workflow.md](examples/demo-workflow.md) for detailed demonstration scenarios.
-
-See [docs/BUSINESS_CASE.md](docs/BUSINESS_CASE.md) for ROI analysis and implementation planning.
-
----
-
-## License
-
-MIT - Use freely, modify as needed, keep the attribution.
-
----
-
-*Built with Anthropic Claude and Model Context Protocol*
-*Architecture: December 2025 patterns for 2026 and beyond*
+Tony Slosar · TODOMODO.IO AGENCY LLC · anthonyslosar@gmail.com · [t.me/toneron2](https://t.me/toneron2) · [slosars.me](https://slosars.me)
