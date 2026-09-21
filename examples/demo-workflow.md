@@ -157,7 +157,7 @@ Status: ✓ All checks passed
 
 ## Demo 3: Design Iteration (Showing AI Reasoning)
 
-Watch the AI optimize when constraints conflict:
+When constraints conflict, the agents report the trade-off:
 
 ```bash
 claude "Design an AHU for a data center:
