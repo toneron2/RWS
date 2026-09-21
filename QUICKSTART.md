@@ -1,6 +1,6 @@
 # RWS Quick Start Guide
 
-Get the demo running in under 10 minutes.
+Setup for the demonstration: Claude Code, a subscription, Node.js, this repository.
 
 ---
 
@@ -69,7 +69,7 @@ Start Claude Code in the project directory:
 claude
 ```
 
-You'll be prompted to log in with your Anthropic account on first run.
+The first run asks for an Anthropic account login.
 
 Once in the Claude Code prompt, try this:
 
@@ -78,7 +78,7 @@ Design an AHU: 10,000 CFM, 55°F supply, Houston TX,
 chilled water cooling, hot water heating, MERV 13 filters
 ```
 
-Watch the agents work together to produce a complete design.
+The conductor sequences the agents and returns a complete design.
 
 ---
 
@@ -92,7 +92,7 @@ The agents will:
 4. **Generate pricing** - complete BOM with costs
 5. **Validate the design** - check against constraints
 
-You'll see the reasoning at each step.
+The reasoning is printed at each step.
 
 ---
 
@@ -126,7 +126,7 @@ Redesign the last unit to fit in 7 ft ceiling height
 
 ### Agent Flow
 
-You'll see output like:
+Output resembles:
 ```
 [ahu-conductor] Starting design pipeline...
 [ahu-design] Configuration: horizontal, draw-through

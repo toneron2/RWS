@@ -214,7 +214,7 @@
 3. **Next Steps**: Identify pilot scope
 4. **Decision**: Build competitive advantage
 
-**The question isn't whether agentic AI will transform HVAC design—it's whether you'll lead or follow.**
+The closing line has been removed (2026-09-21); the deck ends on the next steps.
 
 *Visual: Call to action, contact info*
 
