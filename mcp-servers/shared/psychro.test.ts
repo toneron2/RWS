@@ -57,3 +57,23 @@ test("completeAirState from each input", () => {
 
   assert.throws(() => completeAirState({ db_temp_f: 75 }), /Insufficient data/);
 });
+
+test("wet-bulb round-trips the input", () => {
+  for (const [db, wb] of [[96, 78], [80, 67], [55, 54], [40, 35]] as const) {
+    const state = completeAirState({ db_temp_f: db, wb_temp_f: wb });
+    near(state.wb_temp_f!, wb, 0.01, `wet-bulb at ${db}/${wb}`);
+  }
+  near(completeAirState({ db_temp_f: 75, rh_percent: 50 }).wb_temp_f!, 62.5, 0.3, "wet-bulb at 75°F 50%");
+  near(completeAirState({ db_temp_f: 55, rh_percent: 95 }).wb_temp_f!, 54.2, 0.3, "wet-bulb at 55°F 95%");
+  assert.equal(completeAirState({ db_temp_f: 70, rh_percent: 100 }).wb_temp_f, 70);
+});
+
+test("dew point matches saturation temperature of the vapour pressure", () => {
+  near(completeAirState({ db_temp_f: 96, wb_temp_f: 78 }).dew_point_f!, 71.4, 0.3, "dew point at 96/78");
+  near(completeAirState({ db_temp_f: 75, rh_percent: 50 }).dew_point_f!, 55.1, 0.3, "dew point at 75°F 50%");
+  near(completeAirState({ db_temp_f: 70, rh_percent: 100 }).dew_point_f!, 70, 0.3, "saturated air");
+});
+
+test("wet-bulb above dry-bulb is rejected", () => {
+  assert.throws(() => completeAirState({ db_temp_f: 70, wb_temp_f: 72 }), /cannot exceed dry-bulb/);
+});
