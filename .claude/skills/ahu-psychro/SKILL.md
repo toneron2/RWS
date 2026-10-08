@@ -6,7 +6,6 @@ allowed-tools:
   - Write
   - mcp__psychrometrics__calculate
   - mcp__psychrometrics__process
-invocation: /ahu-psychro
 ---
 
 # AHU Psychrometric Agent - Air Property Analysis

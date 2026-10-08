@@ -6,7 +6,6 @@ allowed-tools:
   - Write
   - mcp__estimation__price
   - mcp__component-db__lookup
-invocation: /ahu-cost
 ---
 
 # AHU Cost Agent - Estimation & Pricing

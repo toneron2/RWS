@@ -9,7 +9,6 @@ allowed-tools:
   - Task
   - Bash
   - TodoWrite
-invocation: /design-ahu
 ---
 
 # AHU Conductor - Pipeline Orchestrator

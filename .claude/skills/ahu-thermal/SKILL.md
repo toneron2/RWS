@@ -6,7 +6,6 @@ allowed-tools:
   - Write
   - mcp__component-db__coils
   - mcp__simulation__thermal
-invocation: /ahu-thermal
 ---
 
 # AHU Thermal Agent - Coil Selection

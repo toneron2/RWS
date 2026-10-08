@@ -6,7 +6,6 @@ allowed-tools:
   - Write
   - mcp__component-db__fans
   - mcp__simulation__airflow
-invocation: /ahu-airflow
 ---
 
 # AHU Airflow Agent - Fan Selection

@@ -7,7 +7,6 @@ allowed-tools:
   - Grep
   - mcp__component-db__lookup
   - mcp__simulation__size
-invocation: /ahu-design
 ---
 
 # AHU Design Agent - Configuration & Sizing
