@@ -7,16 +7,7 @@
 
 import { z } from "zod";
 import { createServer, defineTool, serve } from "../shared/mcp.js";
-
-interface AirState {
-  db_temp_f: number;
-  wb_temp_f?: number;
-  rh_percent?: number;
-  humidity_ratio?: number;
-  enthalpy_btu_lb?: number;
-  specific_volume_ft3_lb?: number;
-  dew_point_f?: number;
-}
+import { AirState, completeAirState, pressureAtAltitude } from "../shared/psychro.js";
 
 interface ProcessResult {
   inlet: AirState;
@@ -24,115 +15,6 @@ interface ProcessResult {
   load_btuh?: number;
   sensible_btuh?: number;
   latent_btuh?: number;
-}
-
-/**
- * Calculate saturation pressure at a given temperature
- */
-function saturationPressure(tempF: number): number {
-  const T = tempF + 459.67; // Convert to Rankine
-  // ASHRAE correlation for saturation pressure
-  const C1 = -1.0440397e4;
-  const C2 = -1.1294650e1;
-  const C3 = -2.7022355e-2;
-  const C4 = 1.2890360e-5;
-  const C5 = -2.4780681e-9;
-  const C6 = 6.5459673;
-
-  const lnPws = C1/T + C2 + C3*T + C4*T*T + C5*T*T*T + C6*Math.log(T);
-  return Math.exp(lnPws); // psia
-}
-
-/**
- * Calculate humidity ratio from RH and temperature
- */
-function humidityRatioFromRH(tempF: number, rhPercent: number, pAtm: number = 14.696): number {
-  const Pws = saturationPressure(tempF);
-  const Pw = (rhPercent / 100) * Pws;
-  return 0.62198 * Pw / (pAtm - Pw);
-}
-
-/**
- * Calculate RH from humidity ratio and temperature
- */
-function rhFromHumidityRatio(tempF: number, W: number, pAtm: number = 14.696): number {
-  const Pws = saturationPressure(tempF);
-  const Pw = (W * pAtm) / (0.62198 + W);
-  return (Pw / Pws) * 100;
-}
-
-/**
- * Calculate enthalpy from temperature and humidity ratio
- */
-function enthalpy(tempF: number, W: number): number {
-  return 0.240 * tempF + W * (1061 + 0.444 * tempF);
-}
-
-/**
- * Calculate specific volume
- */
-function specificVolume(tempF: number, W: number, pAtm: number = 14.696): number {
-  const T = tempF + 459.67;
-  return 0.370486 * T * (1 + 1.6078 * W) / pAtm;
-}
-
-/**
- * Calculate dew point from humidity ratio
- */
-function dewPoint(W: number, pAtm: number = 14.696): number {
-  const Pw = (W * pAtm) / (0.62198 + W);
-  // Approximate inversion of saturation pressure
-  // Using simplified correlation
-  const alpha = Math.log(Pw);
-  return 100.45 + 33.193 * alpha + 2.319 * alpha * alpha;
-}
-
-/**
- * Calculate wet bulb from dry bulb and humidity ratio
- */
-function wetBulb(tempF: number, W: number, pAtm: number = 14.696): number {
-  // Iterative solution
-  let twb = tempF - 10; // Initial guess
-  for (let i = 0; i < 20; i++) {
-    const Wstar = humidityRatioFromRH(twb, 100, pAtm);
-    const Wcalc = ((1093 - 0.556 * twb) * Wstar - 0.240 * (tempF - twb)) /
-                  (1093 + 0.444 * tempF - twb);
-    const error = W - Wcalc;
-    if (Math.abs(error) < 0.0001) break;
-    twb += error * 50; // Adjust guess
-  }
-  return twb;
-}
-
-/**
- * Complete air state from partial information
- */
-function completeAirState(partial: Partial<AirState>, pAtm: number = 14.696): AirState {
-  const state: AirState = { db_temp_f: partial.db_temp_f! };
-
-  // Determine humidity ratio
-  if (partial.humidity_ratio !== undefined) {
-    state.humidity_ratio = partial.humidity_ratio;
-  } else if (partial.rh_percent !== undefined) {
-    state.humidity_ratio = humidityRatioFromRH(state.db_temp_f, partial.rh_percent, pAtm);
-  } else if (partial.wb_temp_f !== undefined) {
-    // Calculate W from wet bulb (simplified)
-    const Wstar = humidityRatioFromRH(partial.wb_temp_f, 100, pAtm);
-    state.humidity_ratio = ((1093 - 0.556 * partial.wb_temp_f) * Wstar -
-                           0.240 * (state.db_temp_f - partial.wb_temp_f)) /
-                          (1093 + 0.444 * state.db_temp_f - partial.wb_temp_f);
-  } else {
-    throw new Error("Insufficient data to determine air state");
-  }
-
-  // Calculate remaining properties
-  state.rh_percent = rhFromHumidityRatio(state.db_temp_f, state.humidity_ratio, pAtm);
-  state.enthalpy_btu_lb = enthalpy(state.db_temp_f, state.humidity_ratio);
-  state.specific_volume_ft3_lb = specificVolume(state.db_temp_f, state.humidity_ratio, pAtm);
-  state.dew_point_f = dewPoint(state.humidity_ratio, pAtm);
-  state.wb_temp_f = wetBulb(state.db_temp_f, state.humidity_ratio, pAtm);
-
-  return state;
 }
 
 /**
@@ -197,10 +79,6 @@ const airStateShape = {
   rh_percent: z.number().min(0).max(100).optional().describe("Relative humidity (%)"),
   humidity_ratio: z.number().min(0).optional().describe("Humidity ratio (lb water / lb dry air)")
 };
-
-function pressureAtAltitude(altitudeFt: number): number {
-  return 14.696 * Math.pow(1 - 6.8754e-6 * altitudeFt, 5.2559);
-}
 
 defineTool(
   server,
