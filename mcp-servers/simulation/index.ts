@@ -7,7 +7,7 @@
 
 import { z } from "zod";
 import { createServer, defineTool, serve } from "../shared/mcp.js";
-import { calculateAirflow, calculateSizing, calculateThermal } from "./calc.js";
+import { AIRPATH_COMPONENT_TYPES, calculateAirflow, calculateSizing, calculateThermal } from "./calc.js";
 
 // MCP Server setup
 const server = createServer("simulation");
@@ -45,7 +45,7 @@ defineTool(
   {
     cfm: z.number().positive().describe("Airflow (CFM)"),
     components: z.array(z.object({
-      type: z.string(),
+      type: z.enum(AIRPATH_COMPONENT_TYPES),
       rows: z.number().int().positive().optional(),
       merv: z.number().int().positive().optional()
     })).describe("List of components in airpath"),

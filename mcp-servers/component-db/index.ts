@@ -274,7 +274,8 @@ function selectCoil(
 // MCP Server setup
 const server = createServer("component-db");
 
-const componentType = z.enum(["fan", "coil", "filter", "damper"]);
+// Only fans and coils have catalog data; filters and dampers are priced by the estimation server.
+const componentType = z.enum(["fan", "coil"]);
 
 defineTool(
   server,
@@ -282,10 +283,9 @@ defineTool(
   "Look up component by model number",
   { component_type: componentType, model: z.string() },
   ({ component_type, model }) => {
-    const component =
-      component_type === "fan" ? fanCatalog.find(f => f.model === model) :
-      component_type === "coil" ? coilCatalog.find(c => c.model === model) :
-      undefined;
+    const component = component_type === "fan"
+      ? fanCatalog.find(f => f.model === model)
+      : coilCatalog.find(c => c.model === model);
     if (!component) throw new Error(`Component not found: ${component_type} ${model}`);
     return component;
   }
@@ -326,10 +326,7 @@ defineTool(
     if (component_type === "fan") {
       return fanCatalog.map(f => ({ model: f.model, type: f.type, max_cfm: f.max_cfm }));
     }
-    if (component_type === "coil") {
-      return coilCatalog.map(c => ({ model: c.model, type: c.type, rows: c.rows }));
-    }
-    return [];
+    return coilCatalog.map(c => ({ model: c.model, type: c.type, rows: c.rows }));
   }
 );
 
