@@ -71,7 +71,7 @@ export function dewPoint(W: number, pAtm: number = P_STD_PSIA): number {
   const Pw = (W * pAtm) / (0.62198 + W);
   const alpha = Math.log(Pw);
   const td = 100.45 + 33.193 * alpha + 2.319 * alpha ** 2 + 0.17074 * alpha ** 3 +
-             1.0186 * Math.pow(Pw, 0.1984);
+             1.2063 * Math.pow(Pw, 0.1984);
   if (td >= 32) return td;
   return 90.12 + 26.142 * alpha + 0.8927 * alpha ** 2;
 }
@@ -126,4 +126,23 @@ export function completeAirState(partial: Partial<AirState>, pAtm: number = P_ST
   state.wb_temp_f = wetBulb(state.db_temp_f, state.humidity_ratio, pAtm);
 
   return state;
+}
+
+/**
+ * Air leaving a cooling coil. A coil cannot add moisture: without a leaving
+ * wet-bulb, 95% RH is assumed but capped at the entering humidity ratio (a
+ * dry coil); a given leaving wet-bulb wetter than the entering air is rejected.
+ */
+export function leavingCoilState(entering: AirState, leavingDb: number, leavingWb?: number,
+                                 pAtm: number = P_STD_PSIA): AirState {
+  const Win = entering.humidity_ratio!;
+  if (leavingWb === undefined) {
+    const W95 = humidityRatioFromRH(leavingDb, 95, pAtm);
+    return completeAirState({ db_temp_f: leavingDb, humidity_ratio: Math.min(W95, Win) }, pAtm);
+  }
+  const leaving = completeAirState({ db_temp_f: leavingDb, wb_temp_f: leavingWb }, pAtm);
+  if (leaving.humidity_ratio! > Win + 1e-9) {
+    throw new Error(`Leaving air (${leavingDb}/${leavingWb}°F) holds more moisture than entering air; a cooling coil cannot add moisture`);
+  }
+  return leaving;
 }

@@ -31,3 +31,16 @@ test("coil selection returns standard face sizes and water flow", () => {
   assert.equal(coil.performance.gpm, Math.round(1043 * 1000 / (500 * 12) * 10) / 10);
   assert.equal(selectCoil("heating", 24, 350, 20).type, "hot_water");
 });
+
+test("motor covers brake horsepower with margin at the top of the catalog", () => {
+  for (const [cfm, tsp] of [[40000, 6], [25000, 5]] as const) {
+    try {
+      const fan = selectFan(cfm, tsp);
+      assert.ok(fan.motor_hp >= fan.operating_point.bhp, `${cfm}/${tsp}: ${fan.motor_hp} HP for ${fan.operating_point.bhp} BHP`);
+    } catch (e) { assert.match((e as Error).message, /No suitable fan/); }
+  }
+});
+
+test("coil larger than the catalog is refused, not undersized", () => {
+  assert.throws(() => selectCoil("cooling", 80, 1500, 12), /split the coil/);
+});

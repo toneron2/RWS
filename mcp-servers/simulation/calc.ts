@@ -4,7 +4,7 @@
  * unit tested.
  */
 
-import { completeAirState } from "../shared/psychro.js";
+import { completeAirState, leavingCoilState } from "../shared/psychro.js";
 
 export interface SizingInput {
   cfm: number;
@@ -100,9 +100,7 @@ export function calculateThermal(input: ThermalInput): ThermalResult {
     db_temp_f: input.entering_db_f,
     wb_temp_f: input.entering_wb_f
   });
-  const leaving = input.leaving_wb_f !== undefined
-    ? completeAirState({ db_temp_f: input.leaving_db_f, wb_temp_f: input.leaving_wb_f })
-    : completeAirState({ db_temp_f: input.leaving_db_f, rh_percent: 95 });
+  const leaving = leavingCoilState(entering, input.leaving_db_f, input.leaving_wb_f);
 
   // Mass flow from the mean specific volume across the coil
   const avgSpecVol = (entering.specific_volume_ft3_lb! + leaving.specific_volume_ft3_lb!) / 2;
