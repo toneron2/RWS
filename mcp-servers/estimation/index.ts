@@ -5,12 +5,8 @@
  * Calculates BOMs, applies margins, and generates quotes.
  */
 
-import { Server } from "@modelcontextprotocol/sdk/server/index.js";
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import {
-  CallToolRequestSchema,
-  ListToolsRequestSchema,
-} from "@modelcontextprotocol/sdk/types.js";
+import { z } from "zod";
+import { createServer, defineTool, serve } from "../shared/mcp.js";
 
 interface CabinetPricing {
   face_area_sqft: number;
@@ -375,87 +371,39 @@ function generateQuote(
 }
 
 // MCP Server setup
-const server = new Server(
-  { name: "estimation", version: "1.0.0" },
-  { capabilities: { tools: {} } }
+const server = createServer("estimation");
+
+const componentShape = {
+  component_type: z.string().describe("cooling_coil, heating_coil, fan, motor or vfd"),
+  model: z.string().optional(),
+  quantity: z.number().int().positive().optional(),
+  capacity_mbh: z.number().positive().optional(),
+  motor_hp: z.number().positive().optional(),
+  rows: z.number().int().positive().optional(),
+  face_area_sqft: z.number().positive().optional()
+};
+
+defineTool(
+  server,
+  "price",
+  "Generate quote and BOM for AHU design",
+  {
+    cfm: z.number().positive().describe("Design airflow (CFM)"),
+    components: z.array(z.object(componentShape)).describe("List of components to price"),
+    complexity: z.enum(["standard", "custom", "hospital", "hazardous"]).optional().describe("Labor complexity class, default standard")
+  },
+  ({ cfm, components, complexity }) => generateQuote(cfm, components, complexity)
 );
 
-server.setRequestHandler(ListToolsRequestSchema, async () => ({
-  tools: [
-    {
-      name: "price",
-      description: "Generate quote and BOM for AHU design",
-      inputSchema: {
-        type: "object",
-        properties: {
-          cfm: { type: "number", description: "Design airflow (CFM)" },
-          components: {
-            type: "array",
-            items: {
-              type: "object",
-              properties: {
-                component_type: { type: "string" },
-                model: { type: "string" },
-                quantity: { type: "number" },
-                capacity_mbh: { type: "number" },
-                motor_hp: { type: "number" },
-                rows: { type: "number" },
-                face_area_sqft: { type: "number" }
-              }
-            },
-            description: "List of components to price"
-          },
-          complexity: {
-            type: "string",
-            enum: ["standard", "custom", "hospital", "hazardous"],
-            default: "standard"
-          }
-        },
-        required: ["cfm", "components"]
-      }
-    },
-    {
-      name: "component_price",
-      description: "Get price for individual component",
-      inputSchema: {
-        type: "object",
-        properties: {
-          component_type: { type: "string" },
-          model: { type: "string" },
-          quantity: { type: "number" },
-          capacity_mbh: { type: "number" },
-          motor_hp: { type: "number" },
-          rows: { type: "number" },
-          face_area_sqft: { type: "number" }
-        },
-        required: ["component_type"]
-      }
-    }
-  ]
-}));
+defineTool(
+  server,
+  "component_price",
+  "Get price for individual component",
+  componentShape,
+  (input) => priceComponent(input)
+);
 
-server.setRequestHandler(CallToolRequestSchema, async (request) => {
-  const { name, arguments: args } = request.params;
-
-  switch (name) {
-    case "price": {
-      const result = generateQuote(args.cfm, args.components, args.complexity);
-      return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
-    }
-
-    case "component_price": {
-      const result = priceComponent(args as ComponentPricing);
-      return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
-    }
-
-    default:
-      throw new Error(`Unknown tool: ${name}`);
-  }
+serve(server).catch((err) => {
+  console.error(err);
+  process.exit(1);
 });
-
-async function main() {
-  const transport = new StdioServerTransport();
-  await server.connect(transport);
-}
-
-main().catch(console.error);

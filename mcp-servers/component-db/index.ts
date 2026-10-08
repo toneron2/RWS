@@ -6,12 +6,8 @@
  * with manufacturer data for fans, coils, filters, etc.
  */
 
-import { Server } from "@modelcontextprotocol/sdk/server/index.js";
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import {
-  CallToolRequestSchema,
-  ListToolsRequestSchema,
-} from "@modelcontextprotocol/sdk/types.js";
+import { z } from "zod";
+import { createServer, defineTool, serve } from "../shared/mcp.js";
 
 // Sample component data (would be from real database)
 interface FanData {
@@ -163,7 +159,7 @@ const coilCatalog: CoilData[] = [
 ];
 
 // Fan selection algorithm
-function selectFan(cfm: number, tsp: number, fanType?: string): any {
+function selectFan(cfm: number, tsp: number, fanType?: string) {
   const candidates = fanCatalog.filter(f => {
     const typeMatch = !fanType || f.type === fanType;
     const cfmOk = f.max_cfm >= cfm * 0.8;
@@ -172,7 +168,7 @@ function selectFan(cfm: number, tsp: number, fanType?: string): any {
   });
 
   if (candidates.length === 0) {
-    return { error: "No suitable fan found for requirements" };
+    throw new Error("No suitable fan found for requirements");
   }
 
   // Select smallest adequate fan
@@ -212,7 +208,7 @@ function selectCoil(
   faceAreaSqft: number,
   capacityMbh: number,
   deltaT: number
-): any {
+) {
   const coilType = service === "cooling" ? "chilled_water" : "hot_water";
 
   // Estimate rows needed
@@ -231,7 +227,7 @@ function selectCoil(
   );
 
   if (candidates.length === 0) {
-    return { error: "No suitable coil found" };
+    throw new Error("No suitable coil found");
   }
 
   // Select coil with minimum adequate rows
@@ -276,120 +272,68 @@ function selectCoil(
 }
 
 // MCP Server setup
-const server = new Server(
-  { name: "component-db", version: "1.0.0" },
-  { capabilities: { tools: {} } }
+const server = createServer("component-db");
+
+const componentType = z.enum(["fan", "coil", "filter", "damper"]);
+
+defineTool(
+  server,
+  "lookup",
+  "Look up component by model number",
+  { component_type: componentType, model: z.string() },
+  ({ component_type, model }) => {
+    const component =
+      component_type === "fan" ? fanCatalog.find(f => f.model === model) :
+      component_type === "coil" ? coilCatalog.find(c => c.model === model) :
+      undefined;
+    if (!component) throw new Error(`Component not found: ${component_type} ${model}`);
+    return component;
+  }
 );
 
-server.setRequestHandler(ListToolsRequestSchema, async () => ({
-  tools: [
-    {
-      name: "lookup",
-      description: "Look up component by model number",
-      inputSchema: {
-        type: "object",
-        properties: {
-          component_type: { type: "string", enum: ["fan", "coil", "filter", "damper"] },
-          model: { type: "string" }
-        },
-        required: ["component_type", "model"]
-      }
-    },
-    {
-      name: "fans",
-      description: "Select a fan for given requirements",
-      inputSchema: {
-        type: "object",
-        properties: {
-          cfm: { type: "number", description: "Required airflow (CFM)" },
-          tsp_in_wg: { type: "number", description: "Total static pressure (in. w.g.)" },
-          fan_type: { type: "string", enum: ["plenum", "centrifugal_bi", "centrifugal_af"] }
-        },
-        required: ["cfm", "tsp_in_wg"]
-      }
-    },
-    {
-      name: "coils",
-      description: "Select a coil for given requirements",
-      inputSchema: {
-        type: "object",
-        properties: {
-          service: { type: "string", enum: ["cooling", "heating"] },
-          face_area_sqft: { type: "number", description: "Required face area (sq ft)" },
-          capacity_mbh: { type: "number", description: "Required capacity (MBH)" },
-          delta_t: { type: "number", description: "Water temperature rise/drop (°F)" }
-        },
-        required: ["service", "face_area_sqft", "capacity_mbh", "delta_t"]
-      }
-    },
-    {
-      name: "list",
-      description: "List available components of a type",
-      inputSchema: {
-        type: "object",
-        properties: {
-          component_type: { type: "string", enum: ["fan", "coil", "filter", "damper"] }
-        },
-        required: ["component_type"]
-      }
+defineTool(
+  server,
+  "fans",
+  "Select a fan for given requirements",
+  {
+    cfm: z.number().positive().describe("Required airflow (CFM)"),
+    tsp_in_wg: z.number().positive().describe("Total static pressure (in. w.g.)"),
+    fan_type: z.enum(["plenum", "centrifugal_bi", "centrifugal_af"]).optional()
+  },
+  ({ cfm, tsp_in_wg, fan_type }) => selectFan(cfm, tsp_in_wg, fan_type)
+);
+
+defineTool(
+  server,
+  "coils",
+  "Select a coil for given requirements",
+  {
+    service: z.enum(["cooling", "heating"]),
+    face_area_sqft: z.number().positive().describe("Required face area (sq ft)"),
+    capacity_mbh: z.number().positive().describe("Required capacity (MBH)"),
+    delta_t: z.number().positive().describe("Water temperature rise/drop (°F)")
+  },
+  ({ service, face_area_sqft, capacity_mbh, delta_t }) =>
+    selectCoil(service, face_area_sqft, capacity_mbh, delta_t)
+);
+
+defineTool(
+  server,
+  "list",
+  "List available components of a type",
+  { component_type: componentType },
+  ({ component_type }) => {
+    if (component_type === "fan") {
+      return fanCatalog.map(f => ({ model: f.model, type: f.type, max_cfm: f.max_cfm }));
     }
-  ]
-}));
-
-server.setRequestHandler(CallToolRequestSchema, async (request) => {
-  const { name, arguments: args } = request.params;
-
-  switch (name) {
-    case "lookup": {
-      let component;
-      if (args.component_type === "fan") {
-        component = fanCatalog.find(f => f.model === args.model);
-      } else if (args.component_type === "coil") {
-        component = coilCatalog.find(c => c.model === args.model);
-      }
-      return {
-        content: [{
-          type: "text",
-          text: component ? JSON.stringify(component, null, 2) : "Component not found"
-        }]
-      };
+    if (component_type === "coil") {
+      return coilCatalog.map(c => ({ model: c.model, type: c.type, rows: c.rows }));
     }
-
-    case "fans": {
-      const result = selectFan(args.cfm, args.tsp_in_wg, args.fan_type);
-      return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
-    }
-
-    case "coils": {
-      const result = selectCoil(
-        args.service,
-        args.face_area_sqft,
-        args.capacity_mbh,
-        args.delta_t
-      );
-      return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
-    }
-
-    case "list": {
-      let items;
-      if (args.component_type === "fan") {
-        items = fanCatalog.map(f => ({ model: f.model, type: f.type, max_cfm: f.max_cfm }));
-      } else if (args.component_type === "coil") {
-        items = coilCatalog.map(c => ({ model: c.model, type: c.type, rows: c.rows }));
-      } else {
-        items = [];
-      }
-      return { content: [{ type: "text", text: JSON.stringify(items, null, 2) }] };
-    }
-
-    default:
-      throw new Error(`Unknown tool: ${name}`);
+    return [];
   }
+);
+
+serve(server).catch((err) => {
+  console.error(err);
+  process.exit(1);
 });
-
-async function main() {
-  const transport = new StdioServerTransport();
-  await server.connect(transport);
-}
-
-main().catch(console.error);

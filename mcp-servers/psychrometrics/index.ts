@@ -5,16 +5,8 @@
  * This is the computational engine behind the ahu-psychro skill.
  */
 
-import { Server } from "@modelcontextprotocol/sdk/server/index.js";
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import {
-  CallToolRequestSchema,
-  ListToolsRequestSchema,
-} from "@modelcontextprotocol/sdk/types.js";
-
-// Constants
-const R_DA = 53.352; // Gas constant for dry air, ft·lbf/(lbm·°R)
-const R_V = 85.778;  // Gas constant for water vapor
+import { z } from "zod";
+import { createServer, defineTool, serve } from "../shared/mcp.js";
 
 interface AirState {
   db_temp_f: number;
@@ -197,98 +189,57 @@ function coolingProcess(
 }
 
 // MCP Server setup
-const server = new Server(
-  { name: "psychrometrics", version: "1.0.0" },
-  { capabilities: { tools: {} } }
-);
+const server = createServer("psychrometrics");
 
-server.setRequestHandler(ListToolsRequestSchema, async () => ({
-  tools: [
-    {
-      name: "calculate",
-      description: "Calculate complete air properties from partial state",
-      inputSchema: {
-        type: "object",
-        properties: {
-          db_temp_f: { type: "number", description: "Dry-bulb temperature (°F)" },
-          wb_temp_f: { type: "number", description: "Wet-bulb temperature (°F)" },
-          rh_percent: { type: "number", description: "Relative humidity (%)" },
-          humidity_ratio: { type: "number", description: "Humidity ratio (lb/lb)" },
-          altitude_ft: { type: "number", description: "Altitude (ft)", default: 0 }
-        },
-        required: ["db_temp_f"]
-      }
-    },
-    {
-      name: "mix",
-      description: "Calculate mixed air state from two airstreams",
-      inputSchema: {
-        type: "object",
-        properties: {
-          stream1: { type: "object", description: "First airstream state" },
-          cfm1: { type: "number", description: "First stream CFM" },
-          stream2: { type: "object", description: "Second airstream state" },
-          cfm2: { type: "number", description: "Second stream CFM" }
-        },
-        required: ["stream1", "cfm1", "stream2", "cfm2"]
-      }
-    },
-    {
-      name: "process",
-      description: "Analyze heating or cooling process",
-      inputSchema: {
-        type: "object",
-        properties: {
-          process_type: { type: "string", enum: ["cooling", "heating"] },
-          entering: { type: "object", description: "Entering air state" },
-          cfm: { type: "number", description: "Airflow (CFM)" },
-          leaving_db_f: { type: "number", description: "Leaving dry-bulb (°F)" },
-          leaving_wb_f: { type: "number", description: "Leaving wet-bulb (°F)" }
-        },
-        required: ["process_type", "entering", "cfm", "leaving_db_f"]
-      }
-    }
-  ]
-}));
+const airStateShape = {
+  db_temp_f: z.number().describe("Dry-bulb temperature (°F)"),
+  wb_temp_f: z.number().optional().describe("Wet-bulb temperature (°F)"),
+  rh_percent: z.number().min(0).max(100).optional().describe("Relative humidity (%)"),
+  humidity_ratio: z.number().min(0).optional().describe("Humidity ratio (lb water / lb dry air)")
+};
 
-server.setRequestHandler(CallToolRequestSchema, async (request) => {
-  const { name, arguments: args } = request.params;
-
-  switch (name) {
-    case "calculate": {
-      const pAtm = args.altitude_ft ?
-        14.696 * Math.pow(1 - 6.8754e-6 * args.altitude_ft, 5.2559) : 14.696;
-      const state = completeAirState(args as Partial<AirState>, pAtm);
-      return { content: [{ type: "text", text: JSON.stringify(state, null, 2) }] };
-    }
-
-    case "mix": {
-      const state1 = completeAirState(args.stream1);
-      const state2 = completeAirState(args.stream2);
-      const mixed = mixAirstreams(state1, args.cfm1, state2, args.cfm2);
-      return { content: [{ type: "text", text: JSON.stringify(mixed, null, 2) }] };
-    }
-
-    case "process": {
-      const entering = completeAirState(args.entering);
-      const result = coolingProcess(
-        entering,
-        args.cfm,
-        args.leaving_db_f,
-        args.leaving_wb_f
-      );
-      return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
-    }
-
-    default:
-      throw new Error(`Unknown tool: ${name}`);
-  }
-});
-
-// Start server
-async function main() {
-  const transport = new StdioServerTransport();
-  await server.connect(transport);
+function pressureAtAltitude(altitudeFt: number): number {
+  return 14.696 * Math.pow(1 - 6.8754e-6 * altitudeFt, 5.2559);
 }
 
-main().catch(console.error);
+defineTool(
+  server,
+  "calculate",
+  "Calculate complete air properties from dry-bulb plus one of wet-bulb, RH or humidity ratio",
+  { ...airStateShape, altitude_ft: z.number().min(0).optional().describe("Altitude (ft), default 0") },
+  ({ altitude_ft, ...state }) => completeAirState(state, pressureAtAltitude(altitude_ft ?? 0))
+);
+
+defineTool(
+  server,
+  "mix",
+  "Calculate mixed air state from two airstreams",
+  {
+    stream1: z.object(airStateShape).describe("First airstream state"),
+    cfm1: z.number().positive().describe("First stream CFM"),
+    stream2: z.object(airStateShape).describe("Second airstream state"),
+    cfm2: z.number().positive().describe("Second stream CFM")
+  },
+  ({ stream1, cfm1, stream2, cfm2 }) =>
+    mixAirstreams(completeAirState(stream1), cfm1, completeAirState(stream2), cfm2)
+);
+
+defineTool(
+  server,
+  "process",
+  "Analyze heating or cooling process",
+  {
+    process_type: z.enum(["cooling", "heating"]),
+    entering: z.object(airStateShape).describe("Entering air state"),
+    cfm: z.number().positive().describe("Airflow (CFM)"),
+    leaving_db_f: z.number().describe("Leaving dry-bulb (°F)"),
+    leaving_wb_f: z.number().optional().describe("Leaving wet-bulb (°F); if omitted, 95% RH leaving air is assumed")
+  },
+  ({ entering, cfm, leaving_db_f, leaving_wb_f }) =>
+    coolingProcess(completeAirState(entering), cfm, leaving_db_f, leaving_wb_f)
+);
+
+serve(server).catch((err) => {
+  console.error(err);
+  process.exit(1);
+});

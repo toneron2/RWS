@@ -5,12 +5,8 @@
  * Includes sizing calculations, thermal performance, and airflow analysis.
  */
 
-import { Server } from "@modelcontextprotocol/sdk/server/index.js";
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import {
-  CallToolRequestSchema,
-  ListToolsRequestSchema,
-} from "@modelcontextprotocol/sdk/types.js";
+import { z } from "zod";
+import { createServer, defineTool, serve } from "../shared/mcp.js";
 
 interface SizingInput {
   cfm: number;
@@ -237,95 +233,51 @@ function enthalpy(db: number, w: number): number {
 }
 
 // MCP Server setup
-const server = new Server(
-  { name: "simulation", version: "1.0.0" },
-  { capabilities: { tools: {} } }
+const server = createServer("simulation");
+
+defineTool(
+  server,
+  "size",
+  "Calculate AHU cabinet sizing from CFM requirements",
+  {
+    cfm: z.number().positive().describe("Design airflow (CFM)"),
+    face_velocity_fpm: z.number().positive().optional().describe("Target face velocity (fpm), default 500"),
+    aspect_ratio: z.number().positive().optional().describe("Width to height ratio, default 1.2")
+  },
+  (input) => calculateSizing(input)
 );
 
-server.setRequestHandler(ListToolsRequestSchema, async () => ({
-  tools: [
-    {
-      name: "size",
-      description: "Calculate AHU cabinet sizing from CFM requirements",
-      inputSchema: {
-        type: "object",
-        properties: {
-          cfm: { type: "number", description: "Design airflow (CFM)" },
-          face_velocity_fpm: { type: "number", description: "Target face velocity (fpm)", default: 500 },
-          aspect_ratio: { type: "number", description: "Width to height ratio", default: 1.2 }
-        },
-        required: ["cfm"]
-      }
-    },
-    {
-      name: "thermal",
-      description: "Calculate thermal loads from air conditions",
-      inputSchema: {
-        type: "object",
-        properties: {
-          cfm: { type: "number", description: "Airflow (CFM)" },
-          entering_db_f: { type: "number", description: "Entering dry-bulb (°F)" },
-          entering_wb_f: { type: "number", description: "Entering wet-bulb (°F)" },
-          leaving_db_f: { type: "number", description: "Leaving dry-bulb (°F)" },
-          leaving_wb_f: { type: "number", description: "Leaving wet-bulb (°F)" }
-        },
-        required: ["cfm", "entering_db_f", "entering_wb_f", "leaving_db_f"]
-      }
-    },
-    {
-      name: "airflow",
-      description: "Calculate system pressure drops and fan power",
-      inputSchema: {
-        type: "object",
-        properties: {
-          cfm: { type: "number", description: "Airflow (CFM)" },
-          components: {
-            type: "array",
-            items: {
-              type: "object",
-              properties: {
-                type: { type: "string" },
-                rows: { type: "number" },
-                merv: { type: "number" }
-              }
-            },
-            description: "List of components in airpath"
-          },
-          external_sp_in_wg: { type: "number", description: "External static pressure (in. w.g.)" }
-        },
-        required: ["cfm", "components", "external_sp_in_wg"]
-      }
-    }
-  ]
-}));
+defineTool(
+  server,
+  "thermal",
+  "Calculate thermal loads from air conditions",
+  {
+    cfm: z.number().positive().describe("Airflow (CFM)"),
+    entering_db_f: z.number().describe("Entering dry-bulb (°F)"),
+    entering_wb_f: z.number().describe("Entering wet-bulb (°F)"),
+    leaving_db_f: z.number().describe("Leaving dry-bulb (°F)"),
+    leaving_wb_f: z.number().optional().describe("Leaving wet-bulb (°F)")
+  },
+  (input) => calculateThermal(input)
+);
 
-server.setRequestHandler(CallToolRequestSchema, async (request) => {
-  const { name, arguments: args } = request.params;
+defineTool(
+  server,
+  "airflow",
+  "Calculate system pressure drops and fan power",
+  {
+    cfm: z.number().positive().describe("Airflow (CFM)"),
+    components: z.array(z.object({
+      type: z.string(),
+      rows: z.number().int().positive().optional(),
+      merv: z.number().int().positive().optional()
+    })).describe("List of components in airpath"),
+    external_sp_in_wg: z.number().min(0).describe("External static pressure (in. w.g.)")
+  },
+  (input) => calculateAirflow(input)
+);
 
-  switch (name) {
-    case "size": {
-      const result = calculateSizing(args as SizingInput);
-      return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
-    }
-
-    case "thermal": {
-      const result = calculateThermal(args as ThermalInput);
-      return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
-    }
-
-    case "airflow": {
-      const result = calculateAirflow(args as AirflowInput);
-      return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
-    }
-
-    default:
-      throw new Error(`Unknown tool: ${name}`);
-  }
+serve(server).catch((err) => {
+  console.error(err);
+  process.exit(1);
 });
-
-async function main() {
-  const transport = new StdioServerTransport();
-  await server.connect(transport);
-}
-
-main().catch(console.error);
