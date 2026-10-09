@@ -6,6 +6,7 @@
   "scripts": {
     "build": "tsc",
     "typecheck": "tsc --noEmit",
+    "test": "tsx --test mcp-servers/*/*.test.ts",
     "dev:psychro": "tsx mcp-servers/psychrometrics/index.ts",
     "dev:components": "tsx mcp-servers/component-db/index.ts",
     "dev:simulation": "tsx mcp-servers/simulation/index.ts",
