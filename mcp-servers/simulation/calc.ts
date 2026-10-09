@@ -36,10 +36,17 @@ export interface ThermalResult {
   coil_rows_estimate: number;
 }
 
+export const AIRPATH_COMPONENT_TYPES = [
+  "filter_prefilter", "filter_final", "filter_hepa",
+  "cooling_coil", "heating_coil",
+  "mixing_section", "damper", "transition", "sound_attenuator", "humidifier"
+] as const;
+export type AirpathComponentType = (typeof AIRPATH_COMPONENT_TYPES)[number];
+
 export interface AirflowInput {
   cfm: number;
   components: {
-    type: string;
+    type: AirpathComponentType;
     rows?: number;
     merv?: number;
   }[];
@@ -178,6 +185,21 @@ export function calculateAirflow(input: AirflowInput): AirflowResult {
         pd = 0.25;
         componentPD["sound_attenuator"] = pd;
         break;
+
+      case "filter_hepa":
+        pd = 1.0; // clean; typical range 0.5 to 1.5
+        componentPD["hepa_filter"] = pd;
+        break;
+
+      case "humidifier":
+        pd = 0.05; // steam dispersion tubes
+        componentPD["humidifier"] = pd;
+        break;
+
+      default: {
+        const unknown: never = comp.type;
+        throw new Error(`Unknown airpath component type "${unknown}". Known types: ${AIRPATH_COMPONENT_TYPES.join(", ")}`);
+      }
     }
 
     internalSP += pd;
