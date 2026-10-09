@@ -41,7 +41,8 @@ export function mixAirstreams(
 
 /**
  * Cooling coil process. Loads are positive for heat removed. When no
- * leaving wet-bulb is given, 95% RH leaving air is assumed.
+ * leaving wet-bulb is given, 95% RH leaving air is assumed, capped at the
+ * entering humidity ratio (a dry coil).
  */
 export function coolingProcess(
   entering: AirState,

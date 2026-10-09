@@ -53,7 +53,7 @@ defineTool(
   server,
   "process",
   "Analyze a coil process. Cooling: loads positive for heat removed; leaving_wb_f optional " +
-  "(95% RH leaving assumed). Heating: sensible only at constant humidity ratio, loads positive " +
+  "(95% RH leaving assumed, capped at the entering humidity ratio for a dry coil). Heating: sensible only at constant humidity ratio, loads positive " +
   "for heat added; leaving_wb_f is ignored.",
   {
     process_type: z.enum(["cooling", "heating"]),

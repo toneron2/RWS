@@ -93,7 +93,8 @@ export function calculateSizing(input: SizingInput): SizingResult {
 
 /**
  * Calculate cooling coil loads from entering and leaving air conditions.
- * When no leaving wet-bulb is given, 95% RH leaving air is assumed.
+ * When no leaving wet-bulb is given, 95% RH leaving air is assumed, capped at
+ * the entering humidity ratio (a dry coil).
  */
 export function calculateThermal(input: ThermalInput): ThermalResult {
   const entering = completeAirState({

@@ -27,7 +27,7 @@ defineTool(
 defineTool(
   server,
   "thermal",
-  "Calculate cooling coil loads from entering and leaving air conditions (95% RH leaving assumed when leaving_wb_f is omitted)",
+  "Calculate cooling coil loads from entering and leaving air conditions (when leaving_wb_f is omitted, 95% RH leaving is assumed, capped at the entering humidity ratio for a dry coil)",
   {
     cfm: z.number().positive().describe("Airflow (CFM)"),
     entering_db_f: z.number().describe("Entering dry-bulb (°F)"),
