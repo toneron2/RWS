@@ -66,26 +66,34 @@ export function specificVolume(tempF: number, W: number, pAtm: number = P_STD_PS
   return 0.370486 * T * (1 + 1.6078 * W) / pAtm;
 }
 
-/** Dew point from humidity ratio (°F). */
+/** Dew point from humidity ratio (°F), ASHRAE eq. 39 (above 32°F) and eq. 40 (below). */
 export function dewPoint(W: number, pAtm: number = P_STD_PSIA): number {
   const Pw = (W * pAtm) / (0.62198 + W);
-  // Approximate inversion of saturation pressure
-  // Using simplified correlation
   const alpha = Math.log(Pw);
-  return 100.45 + 33.193 * alpha + 2.319 * alpha * alpha;
+  const td = 100.45 + 33.193 * alpha + 2.319 * alpha ** 2 + 0.17074 * alpha ** 3 +
+             1.0186 * Math.pow(Pw, 0.1984);
+  if (td >= 32) return td;
+  return 90.12 + 26.142 * alpha + 0.8927 * alpha ** 2;
 }
 
-/** Wet-bulb temperature from dry-bulb and humidity ratio (°F). */
+/**
+ * Wet-bulb temperature from dry-bulb and humidity ratio (°F).
+ *
+ * Inverts humidityRatioFromWetBulb by bisection. W(twb) rises
+ * monotonically with twb, and twb can never exceed the dry-bulb.
+ */
 export function wetBulb(tempF: number, W: number, pAtm: number = P_STD_PSIA): number {
-  // Iterative solution
-  let twb = tempF - 10; // Initial guess
-  for (let i = 0; i < 20; i++) {
-    const Wcalc = humidityRatioFromWetBulb(tempF, twb, pAtm);
-    const error = W - Wcalc;
-    if (Math.abs(error) < 0.0001) break;
-    twb += error * 50; // Adjust guess
+  let lo = tempF - 150;
+  let hi = tempF;
+  if (W >= humidityRatioFromWetBulb(tempF, hi, pAtm)) return hi;
+  if (W <= humidityRatioFromWetBulb(tempF, lo, pAtm)) return lo;
+  for (let i = 0; i < 60; i++) {
+    const mid = (lo + hi) / 2;
+    if (humidityRatioFromWetBulb(tempF, mid, pAtm) < W) lo = mid;
+    else hi = mid;
+    if (hi - lo < 1e-6) break;
   }
-  return twb;
+  return (lo + hi) / 2;
 }
 
 /**
@@ -103,6 +111,9 @@ export function completeAirState(partial: Partial<AirState>, pAtm: number = P_ST
   } else if (partial.rh_percent !== undefined) {
     state.humidity_ratio = humidityRatioFromRH(state.db_temp_f, partial.rh_percent, pAtm);
   } else if (partial.wb_temp_f !== undefined) {
+    if (partial.wb_temp_f > state.db_temp_f) {
+      throw new Error(`Wet-bulb ${partial.wb_temp_f}°F cannot exceed dry-bulb ${state.db_temp_f}°F`);
+    }
     state.humidity_ratio = humidityRatioFromWetBulb(state.db_temp_f, partial.wb_temp_f, pAtm);
   } else {
     throw new Error("Insufficient data to determine air state: give wb_temp_f, rh_percent or humidity_ratio");

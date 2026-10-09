@@ -36,3 +36,17 @@ test("airflow sums component drops and external static", () => {
   assert.equal(r.total_sp_in_wg, 3.01);
   assert.equal(r.component_pd.dampers, 0.08);
 });
+
+test("airflow counts a HEPA stage and rejects unknown component types", () => {
+  const withHepa = calculateAirflow({
+    cfm: 12000,
+    components: [{ type: "filter_prefilter", merv: 8 }, { type: "filter_final", merv: 14 }, { type: "filter_hepa" }, { type: "cooling_coil", rows: 8 }],
+    external_sp_in_wg: 3
+  });
+  assert.equal(withHepa.component_pd.hepa_filter, 1.0);
+  assert.equal(withHepa.internal_sp_in_wg, 2.34);
+  assert.throws(
+    () => calculateAirflow({ cfm: 1000, components: [{ type: "energy_recovery" as never }], external_sp_in_wg: 1 }),
+    /Unknown airpath component type "energy_recovery"/
+  );
+});

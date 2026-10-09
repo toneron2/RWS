@@ -69,8 +69,9 @@ P = 14.696 × (1 - 6.8754×10⁻⁶ × altitude)^5.2559
 Given: Outdoor air (OA) and Return air (RA) at known states
 
 ```
-W_mix = (CFM_OA × W_OA + CFM_RA × W_RA) / CFM_total
-h_mix = (CFM_OA × h_OA + CFM_RA × h_RA) / CFM_total
+ṁ = CFM × 60 / v            (dry-air mass flow, lb/hr, per stream)
+W_mix = (ṁ_OA × W_OA + ṁ_RA × W_RA) / ṁ_total
+h_mix = (ṁ_OA × h_OA + ṁ_RA × h_RA) / ṁ_total
 ```
 
 Solve for Tdb_mix from h_mix and W_mix.
