@@ -5,7 +5,6 @@ allowed-tools:
   - Read
   - Write
   - Grep
-invocation: /ahu-qa
 ---
 
 # AHU QA Agent - Design Validation

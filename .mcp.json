@@ -1,0 +1,20 @@
+{
+  "mcpServers": {
+    "psychrometrics": {
+      "command": "npx",
+      "args": ["tsx", "mcp-servers/psychrometrics/index.ts"]
+    },
+    "component-db": {
+      "command": "npx",
+      "args": ["tsx", "mcp-servers/component-db/index.ts"]
+    },
+    "simulation": {
+      "command": "npx",
+      "args": ["tsx", "mcp-servers/simulation/index.ts"]
+    },
+    "estimation": {
+      "command": "npx",
+      "args": ["tsx", "mcp-servers/estimation/index.ts"]
+    }
+  }
+}
