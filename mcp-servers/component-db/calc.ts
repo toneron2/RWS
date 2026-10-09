@@ -166,20 +166,23 @@ export function selectFan(cfm: number, tsp: number, fanType?: string) {
     throw new Error("No suitable fan found for requirements");
   }
 
-  // Select smallest adequate fan
+  // Select the smallest fan with a motor that covers bhp (15% margin when the catalog allows)
   candidates.sort((a, b) => a.wheel_diameter_in - b.wheel_diameter_in);
-  const selected = candidates[0];
-
-  // Calculate operating point (simplified). cfm <= max_cfm, so the ratio
-  // is at most 1 and the interpolated rpm stays inside rpm_range.
-  const operatingRatio = cfm / selected.max_cfm;
-  const rpm = selected.rpm_range[0] + (selected.rpm_range[1] - selected.rpm_range[0]) * operatingRatio;
-  const efficiency = selected.peak_efficiency * (1 - Math.pow(operatingRatio - 0.7, 2) * 0.5);
-  const bhp = (cfm * tsp) / (6356 * efficiency);
-
-  // Select motor
-  const motorHp = selected.motor_hp_options.find(hp => hp >= bhp * 1.15) ||
-                  selected.motor_hp_options[selected.motor_hp_options.length - 1];
+  const pick = candidates.map(f => {
+    // cfm <= max_cfm, so the ratio is at most 1 and rpm stays inside rpm_range.
+    const operatingRatio = cfm / f.max_cfm;
+    const rpm = f.rpm_range[0] + (f.rpm_range[1] - f.rpm_range[0]) * operatingRatio;
+    const efficiency = f.peak_efficiency * (1 - Math.pow(operatingRatio - 0.7, 2) * 0.5);
+    const bhp = (cfm * tsp) / (6356 * efficiency);
+    const motorHp = f.motor_hp_options.find(hp => hp >= bhp * 1.15) ??
+                    f.motor_hp_options.find(hp => hp >= bhp);
+    return { selected: f, rpm, efficiency, bhp, motorHp };
+  }).find(c => c.motorHp !== undefined);
+  if (!pick) {
+    throw new Error("No suitable fan found: no catalog motor covers the brake horsepower");
+  }
+  const { selected, rpm, efficiency, bhp } = pick;
+  const motorHp = pick.motorHp!;
 
   return {
     model: selected.model,
@@ -240,6 +243,10 @@ export function selectCoil(
                    selected.face_widths[selected.face_widths.length - 1];
   const stdHeight = selected.face_heights.find(h => h >= height) ||
                     selected.face_heights[selected.face_heights.length - 1];
+  if (stdWidth * stdHeight / 144 < faceAreaSqft) {
+    throw new Error(`Face area ${faceAreaSqft} sq ft exceeds the largest single ${selected.model} coil ` +
+                    `(${stdWidth * stdHeight / 144} sq ft); split the coil into sections`);
+  }
 
   // Calculate water flow
   const gpm = capacityMbh * 1000 / (500 * deltaT);

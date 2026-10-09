@@ -36,3 +36,10 @@ test("mixing 30% outdoor air with return air lands between the two states", () =
   assert.ok(mixed.humidity_ratio! > ra.humidity_ratio! && mixed.humidity_ratio! < oa.humidity_ratio!);
   assert.ok(mixed.enthalpy_btu_lb! > ra.enthalpy_btu_lb! && mixed.enthalpy_btu_lb! < oa.enthalpy_btu_lb!);
 });
+
+test("cooling a dry airstream: no moisture added, no negative latent", () => {
+  const r = coolingProcess(completeAirState({ db_temp_f: 75, rh_percent: 40 }), 10000, 55);
+  assert.ok(Math.abs(r.outlet.humidity_ratio! - r.inlet.humidity_ratio!) < 1e-12, "constant W on a dry coil");
+  assert.ok(r.latent_btuh >= 0 && r.latent_btuh < 0.02 * r.load_btuh, `latent ${r.latent_btuh}`);
+  assert.throws(() => coolingProcess(completeAirState({ db_temp_f: 75, rh_percent: 40 }), 10000, 55, 54.5), /cannot add moisture/);
+});

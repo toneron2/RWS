@@ -3,7 +3,7 @@
  * the server entry point so they can be unit tested.
  */
 
-import { AirState, completeAirState, P_STD_PSIA } from "../shared/psychro.js";
+import { AirState, completeAirState, leavingCoilState, P_STD_PSIA } from "../shared/psychro.js";
 
 export interface ProcessResult {
   inlet: AirState;
@@ -41,7 +41,8 @@ export function mixAirstreams(
 
 /**
  * Cooling coil process. Loads are positive for heat removed. When no
- * leaving wet-bulb is given, 95% RH leaving air is assumed.
+ * leaving wet-bulb is given, 95% RH leaving air is assumed, capped at the
+ * entering humidity ratio (a dry coil).
  */
 export function coolingProcess(
   entering: AirState,
@@ -53,9 +54,7 @@ export function coolingProcess(
   if (leaving_db >= entering.db_temp_f) {
     throw new Error(`Cooling process needs leaving dry-bulb (${leaving_db}°F) below entering (${entering.db_temp_f}°F)`);
   }
-  const leaving = leaving_wb !== undefined
-    ? completeAirState({ db_temp_f: leaving_db, wb_temp_f: leaving_wb }, pAtm)
-    : completeAirState({ db_temp_f: leaving_db, rh_percent: 95 }, pAtm);
+  const leaving = leavingCoilState(entering, leaving_db, leaving_wb, pAtm);
 
   const m = massFlow(cfm, entering, leaving);
   const totalLoad = m * (entering.enthalpy_btu_lb! - leaving.enthalpy_btu_lb!);

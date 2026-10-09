@@ -50,3 +50,9 @@ test("airflow counts a HEPA stage and rejects unknown component types", () => {
     /Unknown airpath component type "energy_recovery"/
   );
 });
+
+test("thermal: dry return air to 65°F supply never reports a negative load", () => {
+  const r = calculateThermal({ cfm: 20000, entering_db_f: 85, entering_wb_f: 63.5, leaving_db_f: 65 });
+  assert.ok(r.total_mbh > 0 && r.latent_mbh >= 0, JSON.stringify(r));
+  assert.ok(Math.abs(r.total_mbh - 1.08 * 20000 * 20 / 1000) / (1.08 * 20000 * 20 / 1000) < 0.05, `${r.total_mbh}`);
+});

@@ -8,7 +8,8 @@ is done by code. Built on Claude Code and the Model Context Protocol, December 2
 |---|---|
 | **Status** | Specification, four MCP servers and a scripted demonstration, December 2025. |
 | **Agents** | 7 Claude Code skills: conductor, psychrometrics, airflow, thermal, design, cost, QA |
-| **Servers** | 4 MCP servers, TypeScript, 1,481 lines: `psychrometrics`, `component-db`, `simulation`, `estimation` |
+| **Release** | [1.1.0](https://github.com/toneron2/RWS/releases/tag/v1.1.0), October 2026 |
+| **Servers** | 4 MCP servers, TypeScript, 1,519 lines and 32 tests (`npm test`): `psychrometrics`, `component-db`, `simulation`, `estimation` |
 | **Contracts** | 3 JSON schemas: request, constraint, result |
 | **Demonstration** | [`examples/demo-workflow.md`](examples/demo-workflow.md): a hospital surgery suite (100 % outdoor air, HEPA, NC 35, Houston climate). The script is here; no run is recorded |
 | **Licence** | MIT |
